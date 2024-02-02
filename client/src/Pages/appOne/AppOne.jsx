@@ -1,36 +1,53 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import AddImageModal from './addImageModal/AddImageModal';
+
+import { MdDeleteOutline } from "react-icons/md";
+import { FaDownload } from "react-icons/fa6";
 
 import './appOne.css';
 
 const AppOne = () => {
-  const [file, setFile] = useState(null);
-  const [name, setName] = useState("");
   const [images, setImages] = useState([]);
 
-  useEffect(() => {
-    document.title = "Image Upload and Retrieve"
-  }, [])
+  const [openImageUpload, setOpenImageUpload] = useState(false);
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+  const handleOpenImageUpload = () => {
+    setOpenImageUpload(!openImageUpload);
   }
 
-  const handleFileUpload = async () => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('name', name);
-    axios.post('http://localhost:5000/image/upload', formData).
-      then(res => {
-        setImages([...images, res.data]);
-      }).catch(err => {
-        console.log(err);
-      });
+  const addImage = (image) => {
+    setImages([...images, image ]);
+  }
+
+  const handleDelete = (id) => {
+    axios.delete(`http://localhost:5000/image/delete/${id}`).then(res => {
+      setImages(images.filter(image => image._id !== res.data.image._id));
+    }).catch(err => {
+      console.log(err);
+    });
+  }
+
+  const handleDownload = async (id) => {
+    const res = await axios.get(`http://localhost:5000/image/${id}`, {
+      responseType: 'blob'
+    });
+    
+    const url = window.URL.createObjectURL(new Blob([res.data], {
+      type: res.data.type
+    }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', images.find(image => image._id === id).name);
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
   }
 
   useEffect(() => {
+    document.title = "Images"
     axios.get('http://localhost:5000/image/').then(res => {
-      console.log(res);
       setImages(res.data);
     }).catch(err => {
       console.log(err);
@@ -40,25 +57,57 @@ const AppOne = () => {
   return (
     <div>
       <h1 className="title">
-        Image Upload and Retrieve
+        Images
       </h1>
 
-      <div className="upload-form-view">
-        <input type="text" className="input-name" placeholder="Enter your name" onChange={(e) => setName(e.target.value)} value={name} />
-        <input type="file" className="file-uploader" onChange={handleFileChange} />
-        <button className="btn-upload" onClick={handleFileUpload}>Upload</button>
-      </div>
+      <button
+        className="add-image-btn"
+        onClick={handleOpenImageUpload}
+        autoFocus
+      >Upload Image</button>
+
+      {images.length === 0 && (
+        <p className="no-images">Uh-Oh no images are upload to show.. try and add some images from the button below to see</p>
+      )}
 
       <div className="image-view">
         {
           images && images.map((image, index) => (
             <div className="image-container" key={index}>
               <img src={`http://localhost:5000/images/${image.image}`} alt={image.name} className="image" />
-              <p className="image-name">{image.name}</p>
+              <div className="image-overlay">
+                <h3>{image.name}</h3>
+                <div className="image-actions">
+                  <button 
+                    className="action-btn delete"
+                    onClick={() => handleDelete(image._id)}
+                  >
+                    <MdDeleteOutline
+                      size={30}
+                      color="#f00"
+                    />
+                  </button>
+                  <button 
+                    className="action-btn download"
+                    onClick={() => handleDownload(image._id)}
+                  >
+                    <FaDownload
+                      size={30}
+                      color="#0f0"
+                    />
+                  </button>
+                </div>
+              </div>
             </div>
           ))
         }
       </div>
+
+      <AddImageModal 
+        openImageUpload={openImageUpload}
+        handleOpenImageUpload={handleOpenImageUpload}
+        addImage={addImage}
+      />
     </div>
   )
 }
