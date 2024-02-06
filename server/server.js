@@ -25,7 +25,7 @@ app.use('/mail', mailRoutes);
 
 app.use("/", testRoutes);
 
-mongoose.connect('mongodb://localhost:27017/merntestapp').then(() => {
+mongoose.connect(process.env.MONGODB_URI).then(() => {
     console.log('Connected to database');
     app.listen(PORT, () => {
         console.log('Server running on port ' + PORT);
